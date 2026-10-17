@@ -1,44 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>PDF Merger - Saniya</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Merger - Merge PDFs Online</title>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <style>
-body{font-family:Arial;text-align:center;padding:50px;background:#f5f5f5}
-.box{background:white;padding:30px;border-radius:15px;box-shadow:0 0 15px #ccc;max-width:500px;margin:auto}
-button{padding:12px 20px;background:#ff4081;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;margin-top:15px}
-input{margin:15px 0}
+  *{margin:0;padding:0;box-sizing:border-box;font-family: 'Segoe UI', sans-serif;}
+  body{background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .card{background:white; width:100%; max-width:480px; border-radius:20px; padding:35px 30px; box-shadow:0 20px 60px rgba(0,0,0,0.3); text-align:center;}
+  .logo{font-size:42px; margin-bottom:10px;}
+  h1{font-size:24px; color:#333; margin-bottom:8px;}
+  .subtitle{color:#666; font-size:14px; margin-bottom:25px;}
+  .upload-box{border:2px dashed #667eea; border-radius:12px; padding:25px; background:#f8f9ff; cursor:pointer; transition:0.3s;}
+  .upload-box:hover{background:#eef0ff; border-color:#764ba2;}
+  .upload-box p{font-size:14px; color:#667eea; font-weight:600; margin-top:8px;}
+  input[type=file]{display:none;}
+  #fileList{margin-top:15px; text-align:left;}
+  .file-item{background:#f1f1f1; padding:8px 12px; border-radius:8px; font-size:13px; margin-bottom:6px; display:flex; justify-content:space-between;}
+  .btn{width:100%; background: linear-gradient(90deg, #667eea, #764ba2); color:white; border:none; padding:14px; border-radius:12px; font-size:16px; font-weight:700; margin-top:20px; cursor:pointer; transition:0.3s;}
+  .btn:hover{transform:translateY(-2px); box-shadow:0 8px 20px rgba(102,126,234,0.4);}
+  .btn:disabled{background:#ccc; cursor:not-allowed; transform:none; box-shadow:none;}
+  .footer{margin-top:20px; font-size:12px; color:#999;}
 </style>
 </head>
 <body>
-<div class="box">
-<h2>PDF Merger Tool</h2>
-<p>select 2 or more PDF files to merge</p>
-<input type="file" id="pdfs" multiple accept=".pdf"><br>
-<button onclick="mergePDFs()">Merge & Download</button>
-<p id="status"></p>
+<div class="card">
+  <div class="logo">📄✨</div>
+  <h1>PDF Merger Tool</h1>
+  <p class="subtitle">Select 2 or more PDF files to merge into one</p>
+  
+  <label class="upload-box" for="pdfInput">
+    <div style="font-size:32px;">☁️</div>
+    <p>Click to Choose PDF Files</p>
+    <p style="font-weight:400; font-size:12px; color:#888;">Supports multiple files</p>
+  </label>
+  <input type="file" id="pdfInput" accept=".pdf" multiple>
+
+  <div id="fileList"></div>
+
+  <button class="btn" id="mergeBtn" disabled>Merge & Download PDF</button>
+  
+  <div class="footer">100% Secure - Files never leave your browser</div>
 </div>
 
 <script>
-async function mergePDFs(){
- const files = document.getElementById('pdfs').files;
- if(files.length < 2){ alert("Kam se kam 2 PDF select karo"); return; }
- document.getElementById('status').innerText = "Merging ho raha hai...";
- const mergedPdf = await PDFLib.PDFDocument.create();
- for(let file of files){
-   const bytes = await file.arrayBuffer();
-   const pdf = await PDFLib.PDFDocument.load(bytes);
-   const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-   copiedPages.forEach((page)=> mergedPdf.addPage(page));
- }
- const mergedBytes = await mergedPdf.save();
- const blob = new Blob([mergedBytes], {type: "application/pdf"});
- const link = document.createElement('a');
- link.href = URL.createObjectURL(blob);
- link.download = "merged.pdf";
- link.click();
- document.getElementById('status').innerText = "Ho gaya! Download start ho gaya.";
-}
+  const input = document.getElementById('pdfInput');
+  const fileListDiv = document.getElementById('fileList');
+  const mergeBtn = document.getElementById('mergeBtn');
+  let files = [];
+
+  input.addEventListener('change', () => {
+    files = Array.from(input.files);
+    fileListDiv.innerHTML = '';
+    if(files.length > 0){
+      files.forEach((f, i) => {
+        fileListDiv.innerHTML += `<div class="file-item"><span>${i+1}. ${f.name}</span><span>📄</span></div>`;
+      });
+      mergeBtn.disabled = files.length < 2;
+      mergeBtn.innerText = files.length < 2 ? 'Select at least 2 PDFs' : `Merge ${files.length} PDFs & Download`;
+    }
+  });
+
+  mergeBtn.addEventListener('click', async () => {
+    if(files.length < 2) return;
+    mergeBtn.innerText = 'Merging... Please wait';
+    mergeBtn.disabled = true;
+    try{
+      const mergedPdf = await PDFLib.PDFDocument.create();
+      for(const file of files){
+        const bytes = await file.arrayBuffer();
+        const pdf = await PDFLib.PDFDocument.load(bytes);
+        const copied = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copied.forEach(p => mergedPdf.addPage(p));
+      }
+      const mergedBytes = await mergedPdf.save();
+      const blob = new Blob([mergedBytes], {type: 'application/pdf'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'merged.pdf'; a.click();
+      mergeBtn.innerText = 'Downloaded! Merge Again?';
+    } catch(e){ alert('Error: ' + e.message); mergeBtn.innerText = 'Try Again'; }
+    mergeBtn.disabled = false;
+  });
 </script>
 </body>
 </html>
